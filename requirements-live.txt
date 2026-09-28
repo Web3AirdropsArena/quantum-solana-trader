@@ -1,0 +1,4 @@
+# Install only for supervised mainnet signing; never needed for paper mode.
+solders==0.27.1
+jsonalias==0.1.1
+typing-extensions==4.16.0

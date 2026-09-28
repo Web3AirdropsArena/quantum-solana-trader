@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>quantum-solana-trader — Trading intelligence</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to workspace</a>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="quantum-solana-trader home"
+        ><span class="brand-mark">✳</span> quantum-solana-trader</a
+      >
+      <div class="workspace-label">PERSONAL WORKSPACE <span>01</span></div>
+      <nav aria-label="Workspace">
+        <button class="nav active" data-tab="portfolio" aria-current="page">
+          <span>◫</span>Portfolio <small>01</small></button
+        ><button class="nav" data-tab="decisions">
+          <span>⌘</span>Intelligence <small>02</small></button
+        ><button class="nav" data-tab="network">
+          <span>✳</span>Neural space <small>03</small></button
+        ><button class="nav" data-tab="logs">
+          <span>≡</span>Event journal <small>04</small>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="network-badge">
+          <span class="status-dot"></span> Solana research
+        </div>
+        <p>Small decisions.<br />Observable intelligence.</p>
+        <div class="version">LOCAL ENGINE <span>v0.1</span></div>
+      </div>
+    </aside>
+    <div class="shell">
+      <header class="resource-bar">
+        <div class="resource">
+          <span class="status-dot" id="connection-dot"></span
+          ><b id="connection">CONNECTING</b>
+        </div>
+        <div class="resource">CPU <b id="cpu">—</b></div>
+        <div class="resource">RAM <b id="ram">—</b></div>
+        <div class="resource">DISK <b id="disk">—</b></div>
+        <div class="resource uptime">UPTIME <b id="uptime">—</b></div>
+        <span class="local-pill">↗ LOCALHOST</span>
+      </header>
+      <main id="main">
+        <div class="page-heading">
+          <div>
+            <div class="eyebrow">YOUR EDGE, UNDER OBSERVATION</div>
+            <h1 id="page-title">Portfolio overview<span>.</span></h1>
+            <p id="page-description">
+              A clear view of capital, exposure, and every decision behind it.
+            </p>
+          </div>
+          <div class="heading-actions">
+            <span class="badge" id="mode">NO SESSION</span
+            ><button class="button secondary" id="export">
+              ↓ Export journal
+            </button>
+          </div>
+        </div>
+        <div class="notice" id="notice" role="status">
+          Loading your workspace…
+        </div>
+        <div class="session-bar">
+          <label
+            >SESSION
+            <select id="session" aria-label="Select session">
+              <option value="">No sessions</option>
+            </select></label
+          >
+          <div class="session-actions">
+            <button class="button secondary" id="pause">Pause entries</button
+            ><button class="button danger" id="kill">■ Kill switch</button>
+          </div>
+        </div>
+        <section id="portfolio" class="tab-panel">
+          <div class="stat-grid">
+            <article class="stat">
+              <div>TOTAL EQUITY <span>↗</span></div>
+              <strong id="equity">—</strong
+              ><small id="pnl">No performance data</small>
+            </article>
+            <article class="stat">
+              <div>REALIZED P&amp;L</div>
+              <strong id="realized">—</strong
+              ><small id="fees">After execution costs</small>
+            </article>
+            <article class="stat">
+              <div>CLOSED-TRADE WIN RATE</div>
+              <strong id="win-rate">—</strong
+              ><small id="loss-rate">No closed trades</small>
+            </article>
+            <article class="stat">
+              <div>MAX DRAWDOWN</div>
+              <strong id="drawdown">—</strong
+              ><small>Measured peak to trough</small>
+            </article>
+          </div>
+          <div class="portfolio-grid">
+            <article class="panel equity-panel">
+              <div class="panel-heading">
+                <div>
+                  <div class="eyebrow">PERFORMANCE</div>
+                  <h2>Equity trajectory</h2>
+                </div>
+                <span class="muted">LAST 500 BARS</span>
+              </div>
+              <div class="chart-wrap">
+                <canvas
+                  id="equity-chart"
+                  aria-label="Equity history chart"
+                  role="img"
+                ></canvas>
+                <div id="chart-empty" class="empty-overlay">
+                  Your equity curve begins with your first run.
+                </div>
+              </div>
+              <div class="chart-footer">
+                <span id="chart-start">—</span
+                ><span class="legend"
+                  ><i></i> Net liquidation value, before exit costs</span
+                ><span id="chart-end">—</span>
+              </div>
+            </article>
+            <article class="panel agent-card">
+              <div class="panel-heading">
+                <div>
+                  <div class="eyebrow">ENGINE STATUS</div>
+                  <h2>Intelligence, visible.</h2>
+                </div>
+                <span class="status-dot"></span>
+              </div>
+              <canvas
+                id="mini-scene"
+                aria-label="Decorative 3D signal network"
+                role="img"
+              ></canvas>
+              <div class="agent-state">
+                <strong id="agent-stage">Awaiting first run</strong
+                ><span id="agent-detail"
+                  >CPU-native learning. Persistent state.</span
+                >
+              </div>
+              <div class="agent-footer">
+                <span>EXECUTION</span><b>PAPER FIRST ↗</b>
+              </div>
+            </article>
+          </div>
+          <div class="lower-grid">
+            <article class="panel">
+              <div class="panel-heading">
+                <h2>Open exposure</h2>
+                <span class="muted">SPOT / LONG ONLY</span>
+              </div>
+              <div id="position" class="position-body empty">
+                No open position. Cash is a valid decision.
+              </div>
+            </article>
+            <article class="panel risk-card">
+              <div class="panel-heading">
+                <h2>Risk envelope</h2>
+                <span class="badge">ENFORCED</span>
+              </div>
+              <div id="risk-limits" class="risk-limits">
+                <span>Position cap <b>10%</b></span
+                ><span>Daily loss limit <b>2%</b></span
+                ><span>Drawdown halt <b>8%</b></span>
+              </div>
+            </article>
+          </div>
+          <article class="panel trades-panel">
+            <div class="panel-heading">
+              <h2>
+                Execution history <span id="trade-count" class="muted"></span>
+              </h2>
+              <div class="filters">
+                <input
+                  id="trade-search"
+                  type="search"
+                  placeholder="Search reason or side…"
+                  aria-label="Search trade history"
+                /><select id="trade-side" aria-label="Filter trade side">
+                  <option value="">All sides</option>
+                  <option>BUY</option>
+                  <option>SELL</option></select
+                ><label class="sr-only" for="trade-date">Trade date</label
+                ><input id="trade-date" type="date" />
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>TIME / UTC</th>
+                    <th>ASSET</th>
+                    <th>SIDE</th>
+                    <th>PRICE</th>
+                    <th>QUANTITY</th>
+                    <th>COST</th>
+                    <th>REALIZED P&amp;L</th>
+                    <th>REASON</th>
+                  </tr>
+                </thead>
+                <tbody id="trades"></tbody>
+              </table>
+            </div>
+            <button class="text-button" id="more-trades">
+              Load older fills ↓
+            </button>
+          </article>
+        </section>
+        <section id="decisions" class="tab-panel" hidden>
+          <article class="panel command-panel">
+            <div>
+              <div class="eyebrow">RESEARCH PIPELINE</div>
+              <h2>From evidence to execution.</h2>
+              <p class="muted">
+                Train locally. Evaluate chronologically. Observe real markets.
+              </p>
+            </div>
+            <div class="run-controls">
+              <button class="button primary" data-run="demo">
+                Run synthetic demo ↗</button
+              ><button class="button secondary" data-run="download">
+                Download 7 days</button
+              ><label class="sr-only" for="dataset">Dataset</label
+              ><select id="dataset">
+                <option>No datasets</option></select
+              ><button class="button secondary" data-run="train">
+                Train dataset</button
+              ><label class="check"
+                ><input type="checkbox" id="use-jev" />Use Jev risk
+                review</label
+              ><label class="sr-only" for="paper-session"
+                >Paper session name</label
+              ><input
+                id="paper-session"
+                value="live-paper"
+                maxlength="64"
+                pattern="[A-Za-z0-9_-]+"
+                aria-label="Paper session name"
+                title="Resume this session, or choose a new name after a latched halt"
+              /><button class="button primary" data-run="paper">
+                Start live paper</button
+              ><button class="button secondary" id="stop-worker">
+                Stop worker
+              </button>
+            </div>
+          </article>
+          <div id="stages" class="stage-grid"></div>
+          <article class="panel evaluation-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Out-of-sample evaluation</h2>
+                <p class="muted">
+                  Three expanding chronological folds with an embargo.
+                </p>
+              </div>
+              <button class="button secondary" data-run="evaluate">
+                Evaluate dataset
+              </button>
+            </div>
+            <div id="evaluations" class="position-body empty">
+              No completed evaluation. Training alone does not establish
+              performance.
+            </div>
+          </article>
+          <div class="lower-grid">
+            <article class="panel">
+              <div class="panel-heading">
+                <h2>Prediction quality</h2>
+                <span class="muted">DELAYED LABELS</span>
+              </div>
+              <div id="model-metrics" class="model-metrics"></div>
+              <p id="baseline-metrics" class="panel-note"></p>
+              <p class="panel-note">
+                Accuracy measures whether a future return exceeds the configured
+                round-trip fee/slippage hurdle. It is not the trade win rate.
+              </p>
+            </article>
+            <article class="panel">
+              <div class="panel-heading">
+                <h2>Mainnet review gates</h2>
+                <span class="badge">LOCKED</span>
+              </div>
+              <div id="gates" class="gates"></div>
+            </article>
+          </div>
+          <article class="panel">
+            <div class="panel-heading">
+              <h2>Decision ledger</h2>
+              <span class="muted">OBSERVABLE REASONS, NOT HIDDEN THOUGHTS</span>
+            </div>
+            <div id="decision-list" class="decision-list"></div>
+            <button class="text-button" id="more-decisions">
+              Load older decisions ↓
+            </button>
+          </article>
+        </section>
+        <section id="network" class="tab-panel" hidden>
+          <article class="panel neural-panel">
+            <div class="panel-heading">
+              <div>
+                <div class="eyebrow">LIVE SIGNAL TOPOLOGY</div>
+                <h2>The decision space</h2>
+              </div>
+              <span class="badge" id="network-decision">HOLD</span>
+            </div>
+            <div class="neural-stage">
+              <canvas
+                id="network-scene"
+                tabindex="0"
+                aria-label="Interactive 3D decision network. Drag or use arrow keys to rotate; plus and minus zoom; select a node for details."
+                role="img"
+              ></canvas>
+              <div class="scene-caption">
+                <span class="eyebrow">FEATURES → MODEL → POLICY → ACTION</span>
+                <h3>Every signal has a path.</h3>
+                <p>Drag to orbit · scroll to zoom · select a node</p>
+              </div>
+              <div class="scene-tools">
+                <button class="button secondary" id="scene-reset">
+                  Reset view</button
+                ><button class="button secondary" id="scene-motion">
+                  Pause motion
+                </button>
+              </div>
+            </div>
+            <div id="node-detail" class="node-detail" role="status">
+              Select a signal to inspect its current value.
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading">
+              <h2>Signal values</h2>
+              <span class="muted">ACCESSIBLE NETWORK VIEW</span>
+            </div>
+            <div id="signal-values" class="signal-values"></div>
+          </article>
+        </section>
+        <section id="logs" class="tab-panel" hidden>
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <div class="eyebrow">DURABLE EVENT STREAM</div>
+                <h2>Nothing disappears on restart.</h2>
+              </div>
+              <div class="filters">
+                <input
+                  id="log-search"
+                  type="search"
+                  placeholder="Search loaded events…"
+                  aria-label="Search logs"
+                /><select id="log-kind" aria-label="Filter event kind">
+                  <option value="">All events</option>
+                  <option>decision</option>
+                  <option>fill</option>
+                  <option>outcome</option>
+                  <option>incident</option>
+                  <option>error</option>
+                  <option>control</option>
+                  <option>quote</option>
+                </select>
+              </div>
+            </div>
+            <div id="log-list" class="log-list"></div>
+            <button class="text-button" id="more-logs">
+              Load older events ↓
+            </button>
+          </article>
+        </section>
+        <footer>
+          <span>quantum-solana-trader / RESEARCH WORKSTATION</span
+          ><span id="footer-status">No wallet connected · No live orders</span
+          ><span>BUILT TO BE INSPECTED ↗</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="kill-dialog">
+      <h2>Stop new exposure?</h2>
+      <p>
+        This latches the kill switch for the active paper session. Any open
+        paper position exits at the next valid bar. It cannot close a real
+        wallet position.
+      </p>
+      <div class="dialog-actions">
+        <button class="button secondary" id="cancel-kill">Cancel</button
+        ><button class="button danger" id="confirm-kill">
+          Activate kill switch
+        </button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

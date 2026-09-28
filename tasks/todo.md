@@ -1,0 +1,13 @@
+# Verification checklist
+- [x] Persistent ingestion, online learning, chronological replay and restart check
+- [x] Costs, risk gates, live paper loop and provider failures
+- [x] Solana/Jev adapters and mainnet uncertainty controls implemented and tested offline
+- [x] Portfolio, decisions, 3D network, logs and telemetry
+- [x] Tests, browser verification, audit repairs and Ubuntu runbook
+- [x] Graphify refreshed after follow-up readiness changes (AST-only)
+- [x] Full-week real-data evaluation: 10,080 candles, three folds; insufficient trading evidence
+- [x] Baseline-aware readiness and offline-duration correction; 28 regression tests pass
+- [ ] Authenticated Jev/Jupiter integration verification (credentials required)
+- [ ] Devnet transaction verification (faucet rejected request)
+- [ ] Dedicated Ubuntu execution and long-duration out-of-sample/live paper validation
+- [ ] Proven profitable strategy and production mainnet execution: not established

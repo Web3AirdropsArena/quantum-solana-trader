@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+data/
+*.sqlite*
+*keypair*.json
+node_modules/
+artifacts/
+.pytest_cache/
+.codex/
+graphify-out/
