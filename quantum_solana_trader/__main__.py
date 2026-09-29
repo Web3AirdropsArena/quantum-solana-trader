@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import signal
 import time
 from pathlib import Path
@@ -8,6 +9,7 @@ from .engine import Policy, metrics
 from .providers import INTERVALS, download, import_csv, rpc, token_screen
 from .research import replay, synthetic, walk_forward
 from .store import Store, engine_lock
+from .dex import DEFAULT_POOL, download_dex, scan_dexes, source_name
 
 
 def main():
@@ -17,20 +19,27 @@ def main():
     server = sub.add_parser('serve', help='Open the local dashboard server')
     server.add_argument('--port', type=int, default=8765)
     sub.add_parser('demo', help='Deterministic synthetic stress replay, clearly labeled')
-    fetch = sub.add_parser('download', help='Historical Binance SOL/USDC completed candles')
+    fetch = sub.add_parser('download', help='Keyless DEX SOL/USDC history; Binance available as explicit legacy research source')
     fetch.add_argument('--days', type=int, default=30)
     fetch.add_argument('--interval', choices=INTERVALS, default='1m')
+    fetch.add_argument('--provider', choices=['dex', 'binance'], default='dex')
+    fetch.add_argument('--pool', default=DEFAULT_POOL)
+    scan = sub.add_parser('scan-dex', help='Keyless cross-DEX research and round-trip quote checks; no transactions')
+    scan.add_argument('--usdc', type=float, default=10.)
     load = sub.add_parser('import-csv', help='CSV columns: ts,open,high,low,close,volume; close-time UTC seconds')
     load.add_argument('path')
     load.add_argument('--source', required=True, help='Provenance name starting csv:')
     for name in ('train', 'evaluate'):
         p = sub.add_parser(name)
-        p.add_argument('--source', default='binance:SOLUSDC:1m')
+        p.add_argument('--source', default=source_name())
         p.add_argument('--session', default=None)
         p.add_argument('--interval', choices=INTERVALS, default='1m')
     paper = sub.add_parser('paper', help='Continuous paper worker; no keys or transactions')
     paper.add_argument('--jev', action='store_true')
-    paper.add_argument('--session', default='live-paper', help='Resume this paper session, or choose a new name after a latched halt')
+    paper.add_argument('--laya', action='store_true', help='Optional local risk reviewer; requires downloaded local checkpoint')
+    paper.add_argument('--feed', choices=['dex', 'binance'], default='dex', help='Binance is only for explicit legacy research')
+    paper.add_argument('--pool', default=DEFAULT_POOL)
+    paper.add_argument('--session', default='live-dex-paper', help='Resume this paper session, or choose a new name after a latched halt')
     paper.add_argument('--checkpoint', help='Warm-start from a real SOLUSDC 1m replay session')
     screen = sub.add_parser('screen', help='Read-only mint screening')
     screen.add_argument('mint')
@@ -42,10 +51,10 @@ def main():
     backup = sub.add_parser('backup')
     backup.add_argument('destination')
     live = sub.add_parser('swap', help='Supervised, evidence-gated mainnet order; requires optional solders')
-    live.add_argument('--evidence-session', default='live-paper')
+    live.add_argument('--evidence-session', default='live-dex-paper')
     live.add_argument('--side', choices=['BUY', 'SELL'], required=True)
     live.add_argument('--usdc', required=True)
-    live.add_argument('--keyfile', required=True)
+    live.add_argument('--keyfile', default=os.getenv('QST_WALLET_FILE'), help='External private keyfile, or QST_WALLET_FILE environment path')
     live.add_argument('--ack', required=True)
     sub.add_parser('reconcile', help='Resolve pending mainnet signatures without resending')
     args = parser.parse_args()
@@ -84,8 +93,17 @@ def main():
             if not 1 <= args.days <= 365:
                 raise ValueError('Days must be between 1 and 365')
             end = int(time.time()) // INTERVALS[args.interval] * INTERVALS[args.interval]
-            print(download(store, end - args.days * 86400, end, args.interval,
-                           progress=lambda p, n: print(f'{p:.0%} • {n:,} new candles', flush=True)))
+            progress = lambda p, n: print(f'{p:.0%} / {n:,} new candles', flush=True)
+            if args.provider == 'dex':
+                if args.interval != '1m':
+                    raise ValueError('DEX history currently supports 1m only')
+                print(download_dex(store, end - args.days * 86400, end, args.pool, progress))
+            else:
+                print(download(store, end - args.days * 86400, end, args.interval, progress))
+        elif args.command == 'scan-dex':
+            result = scan_dexes(args.usdc)
+            store.log('system', 'dex_scan', result)
+            print(json.dumps(result, indent=2))
         elif args.command == 'import-csv':
             print(import_csv(store, args.path, args.source))
         elif args.command in ('train', 'evaluate'):
@@ -105,7 +123,8 @@ def main():
             from .runtime import Runtime
             runtime = Runtime(store)
             signal.signal(signal.SIGINT, lambda *_: runtime.stop_event.set())
-            runtime._paper({'jev': args.jev, 'checkpoint': args.checkpoint, 'session': args.session})
+            runtime._paper({'jev': args.jev, 'laya': args.laya, 'feed': args.feed, 'pool': args.pool,
+                            'checkpoint': args.checkpoint, 'session': args.session})
         elif args.command == 'screen':
             print(json.dumps(token_screen(args.mint), indent=2))
         elif args.command == 'devnet-check':

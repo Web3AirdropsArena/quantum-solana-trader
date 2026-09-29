@@ -54,11 +54,14 @@ Set environment variables in your own terminal before launching. Do not paste se
 
 | Variable | Purpose |
 |---|---|
+| `QST_ALLOW_HOSTED_AI` | Leave unset/0 in free mode; hosted Jev additionally requires 1 |
 | `TYPESAFE_API_KEY` | Hosted Jev reviewer; opt in using `--jev` or the checkbox |
-| `JUPITER_API_KEY` | Indicative DEX quote check; required by the mainnet adapter |
+| `QST_LAYA_MODEL_DIR` | Optional local Laya checkpoint; see FREE_MODE.md |
+| `QST_WALLET_FILE` | External owner-only Ubuntu keyfile path |
+| `JUPITER_API_KEY` | Supervised mainnet adapter only |
 | `SOLANA_RPC_URL` | Optional HTTPS Solana mainnet RPC endpoint |
 
-Jev can cost money under your provider account. It receives features and policy context, never a keypair. Invalid, unavailable or uncertain Jev output blocks entries when enabled. Jupiter quote failure/divergence also blocks entries when configured. Without these keys, public-candle paper trading still works and is explicitly **not** a DEX execution simulation.
+Jev can cost money and is blocked by default even with a key. Default paper mode uses keyless DEX data, Raydium quote checks and public RPC mint screening. Missing evidence blocks entries. Prices and paper fills are indicative, not proof of executable swaps. See [free mode and local Laya](FREE_MODE.md) for exact dependencies and limits.
 
 ## Devnet and mainnet boundary
 
@@ -66,7 +69,7 @@ Jev can cost money under your provider account. It receives features and policy 
 
 Do not fund this system based on its build completion. The supervised `swap` CLI requires explicit mainnet configuration, a separate keyfile, acknowledgment, qualifying fresh paper evidence, transaction simulation and durable intent recording. It limits orders to 1-25 USDC and gross daily volume to 100 USDC. It rejects address lookup tables and many normal routes. It has not been tested against real funds and is not an autonomous executor.
 
-`python -m quantum_solana_trader reconcile` checks submitted signatures without resending. An unknown result remains blocked for manual investigation; absence from a single RPC is not evidence that a swap failed. Windows keyfile ACLs are not fully audited by the code; Ubuntu owner-only permissions are checked. Keep any future wallet outside this project and use a new isolated wallet. Independent transaction/security review and realistic execution evidence remain prerequisites before considering real use.
+`python -m quantum_solana_trader reconcile` checks submitted signatures without resending. An unknown result remains blocked for manual investigation; absence from a single RPC is not evidence that a swap failed. Windows mainnet key loading is blocked; Ubuntu owner-only permissions are required. Keep any future wallet outside this project and use a new isolated wallet. Independent transaction/security review and realistic execution evidence remain prerequisites before considering real use.
 
 ## Upgrades
 

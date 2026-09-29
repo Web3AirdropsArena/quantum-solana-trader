@@ -9,12 +9,41 @@ import os
 import stat
 import time
 import uuid
+from pathlib import Path
 
 from .engine import money, readiness
 from .providers import SOL, USDC, TOKEN_PROGRAM, ProviderError, jupiter_order, request_json, rpc, token_screen
 from .store import encode
 
 ACK = 'I_ACCEPT_MAINNET_LOSS'
+
+
+def read_wallet_file(keyfile):
+    """Read an operator-created keyfile outside the checkout; never log its contents."""
+    if not keyfile:
+        raise ValueError('Provide --keyfile or QST_WALLET_FILE; never enter private keys in the dashboard')
+    supplied = Path(keyfile).expanduser()
+    if supplied.is_symlink():
+        raise ValueError('Wallet file must not be a symbolic link')
+    path = supplied.resolve()
+    project = Path(__file__).resolve().parent.parent
+    if path == project or project in path.parents:
+        raise ValueError('Wallet file must be outside the project checkout')
+    if os.name == 'nt':
+        raise ValueError('Mainnet key loading requires Unix owner-only permissions; use the dedicated Ubuntu machine')
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    with os.fdopen(descriptor, encoding='utf-8') as file:
+        info = os.fstat(file.fileno())
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or
+                info.st_mode & (stat.S_IRWXG | stat.S_IRWXO) or info.st_size > 4096):
+            raise ValueError('Wallet file must be small, regular, owned by this user and mode 600 or stricter')
+        try:
+            raw = json.load(file)
+        except (ValueError, UnicodeError):
+            raise ValueError('Malformed wallet file') from None
+    if not isinstance(raw, list) or len(raw) != 64 or any(type(x) is not int or not 0 <= x <= 255 for x in raw):
+        raise ValueError('Expected a Solana CLI 64-byte keypair file')
+    return bytes(raw)
 
 
 def base58_bytes(value):
@@ -146,13 +175,12 @@ class LiveExecutor:
         from solders.keypair import Keypair
         from solders.transaction import VersionedTransaction
         from solders.message import to_bytes_versioned
-        if os.name != 'nt' and os.stat(keyfile).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            raise ValueError('Key file must have mode 600 or stricter')
-        with open(keyfile, encoding='utf-8') as file:
-            raw = json.load(file)
-        if not isinstance(raw, list) or len(raw) != 64 or any(type(x) is not int or not 0 <= x <= 255 for x in raw):
-            raise ValueError('Expected a Solana CLI 64-byte keypair file')
-        signer = Keypair.from_bytes(bytes(raw))
+        try:
+            signer = Keypair.from_bytes(read_wallet_file(keyfile))
+        except ValueError as error:
+            if 'keypair' in str(error).lower():
+                raise ValueError('Wallet keypair is invalid') from None
+            raise
         wallet = str(signer.pubkey())
         balance = rpc('getBalance', [wallet, {'commitment': 'confirmed'}])['value']
         if balance < 50_000_000:

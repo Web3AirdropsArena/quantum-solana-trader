@@ -15,7 +15,7 @@ def font(size):
 nodes = [
     ('01', 'Observe', 'Completed candles / CSV', 'Validate timestamps and OHLC. Preserve source provenance.'),
     ('02', 'Analyze', 'Causal features + model', 'Online logistic probabilities and three adaptive strategy rules.'),
-    ('03', 'Constrain', 'Risk policy + reviews', 'Limits, stale-data checks and optional hosted Jev risk review.'),
+    ('03', 'Constrain', 'Risk policy + reviews', 'Limits, DEX quote checks and optional local Laya risk review.'),
     ('04', 'Paper trade', 'BUY / SELL / HOLD', 'Simulated execution with fees, gas assumptions and slippage.'),
     ('05', 'Remember', 'Atomic SQLite checkpoint', 'Persist account state, decisions, delayed labels and incidents.'),
     ('06', 'Evaluate', 'Chronological test folds', 'Measure held-out results and compare with a trivial baseline.'),

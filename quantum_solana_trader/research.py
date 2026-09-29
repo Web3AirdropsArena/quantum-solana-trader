@@ -86,7 +86,7 @@ def walk_forward(store, source, prefix, policy=None, progress=None, stop=None):
               'dataset_sha256': hashlib.sha256(encode(data).encode()).hexdigest(), 'folds': reports,
               'policy': policy.__dict__, 'created': time.time(),
               'method': 'expanding train / embargo / prequential adaptive test; no test-based parameter selection',
-              'limitations': ['CEX candles do not model DEX liquidity', 'OHLC stops use pessimistic ordering',
+              'limitations': ['OHLC candles do not model executable DEX liquidity or MEV', 'OHLC stops use pessimistic ordering',
                              'correlated observations; Wilson interval is descriptive, not a guarantee',
                              'no Sharpe annualization inferred from irregular samples']}
     store.log(prefix, 'evaluation', result)

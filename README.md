@@ -15,14 +15,16 @@ Python + SQLite + native JavaScript. CPU-only. No GPU, wallet, cloud database or
 | Capability | Current behavior |
 |---|---|
 | Market | SOL/USDC spot; long or cash; no shorts or leverage |
-| Historical data | Public Binance completed candles and normalized CSV import |
+| Historical data | Keyless GeckoTerminal DEX candles; explicit legacy Binance and CSV research |
 | Local learning | Online logistic regression plus adaptive momentum, mean-reversion and breakout rules |
 | Evaluation | Three expanding chronological training/test folds, embargo and delayed labels |
 | Execution | Simulated fills with fees, slippage and gas assumptions |
 | Memory | Atomic SQLite checkpoints for models, accounts, risk state, pending labels and events |
 | Risk | Position/daily-loss/drawdown limits, stops, cooldowns, drift/stale-data checks and kill switch |
 | Token screening | Mint/program/authority/concentration/quote checks; unknown assets remain blocked |
-| Jev | Optional hosted TypeSafe risk reviewer; not locally trained; authenticated verification pending |
+| DEX research | Orca/Raydium/Meteora pool comparison and size-specific Raydium round-trip quotes; no atomic arbitrage executor |
+| Local Laya | Optional CPU risk-review adapter; requires downloaded weights; actual inference not yet verified |
+| Jev | Optional hosted reviewer, blocked by default even if an API key is present |
 | Mainnet | Restricted supervised CLI adapter; unvalidated with real funds |
 
 The dashboard has four views:
@@ -87,7 +89,7 @@ Node.js is **not** required to run the dashboard. Optional `requirements-live.tx
 ## First run: dashboard workflow
 
 1. In **Intelligence**, run the synthetic demo to verify the software pipeline. Synthetic performance cannot qualify for mainnet review.
-2. Choose **Download 7 days** to fetch public SOL/USDC candles. Select that dataset and choose **Train dataset**.
+2. Choose **Download DEX history** to request seven days of public SOL/USDC pool candles. Provider availability may limit the returned history. Select that dataset and choose **Train dataset**.
 3. Choose **Evaluate dataset**. Inspect net results, costs, drawdown, calibration, sample size and the no-opportunity baseline. Training accuracy alone is not evidence of success.
 4. Select a real replay session to warm-start its model, or start cold. Enter a paper-session name and choose **Start live paper**. Real observations are used, but all capital and fills remain simulated.
 5. **Stop worker** retains committed state. Start the same session name later to resume. Worker threads themselves do not survive a process restart.
@@ -106,23 +108,25 @@ python -m quantum_solana_trader train --session initial-training
 python -m quantum_solana_trader evaluate --session evaluation-001
 
 # Observe live data with simulated money. Ctrl+C stops cleanly.
-python -m quantum_solana_trader paper --session live-paper --checkpoint initial-training
+python -m quantum_solana_trader paper --session live-dex-paper --checkpoint initial-training
 # Resume this account later:
-python -m quantum_solana_trader paper --session live-paper
+python -m quantum_solana_trader paper --session live-dex-paper
 ```
 
-Use a fresh prefix for each evaluation. Interrupted evaluation retains partial checkpoints but does not issue a completed report. For non-1m datasets, supply matching `--source` and `--interval` to training/evaluation. Live-paper warm starts accept only real SOLUSDC 1m replay checkpoints.
+Use a fresh prefix for each evaluation. Interrupted evaluation retains partial checkpoints but does not issue a completed report. DEX history currently supports one-minute bars. Warm starts require a replay checkpoint from the exact same pool/source. Legacy CEX research requires explicit `download --provider binance` / `paper --feed binance`; it cannot satisfy DEX mainnet provenance gates.
+
+**No paid model is required.** Core training and inference run locally. Public market APIs require internet but no keys in the default workflow; offline demos and imported CSVs need neither. Mainnet gas and DEX fees still cost money. See [the free workflow, optional Laya setup and wallet handling](docs/FREE_MODE.md).
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    D[Binance completed candles / normalized CSV] --> V[Validate and preserve provenance]
+    D[DEX completed candles / normalized CSV] --> V[Validate and preserve provenance]
     V --> S[(SQLite: candles, sessions, events, intents)]
     S --> F[Causal market features]
     F --> M[Online logistic model + adaptive strategy rules]
     M --> R[Deterministic risk policy]
-    J[Optional Jev review + Jupiter quote check] --> R
+    J[DEX quotes + mint checks + optional local Laya] --> R
     R --> P[Paper BUY / SELL / HOLD]
     P --> S
     P --> L[Delayed outcomes + trade lessons]
@@ -143,6 +147,8 @@ flowchart TD
 | `quantum_solana_trader/engine.py` | Portfolio accounting, risk policy, decisions, metrics and readiness |
 | `quantum_solana_trader/store.py` | Atomic persistence, backup/export and OS writer lock |
 | `quantum_solana_trader/providers.py` | Binance, CSV, Solana RPC, Jupiter, screening and Jev adapters |
+| `quantum_solana_trader/dex.py` | DEX history, venue comparison and round-trip friction checks |
+| `quantum_solana_trader/local_review.py` | Optional offline CPU Laya reviewer; cannot override risk limits |
 | `quantum_solana_trader/research.py` | Synthetic data, resumable replay and evaluation |
 | `quantum_solana_trader/runtime.py` | Worker lifecycle and resource telemetry |
 | `quantum_solana_trader/server.py` | Local HTTP routes, Host/origin checks and CSRF protection |
@@ -160,7 +166,7 @@ flowchart TD
 
 **Trade memory** retains realized losses, reduces risk after losses and introduces cooldowns. The model learns numerical parameters; it never rewrites source code or expands policy limits. Logged explanations are observable reasons and checks, not hidden chain-of-thought or a guarantee that failures cannot recur.
 
-**Jev**, when enabled, is an external hosted risk reviewer, pinned to `jev-1.13.0`. It is not a locally trained model or quantum algorithm. See [research and primary sources](docs/RESEARCH.md).
+**Laya** is an optional local typed-decision reviewer, separate from the trading model. Its weights are not automatically retrained by paper trading. The adapter is tested with controlled responses; real downloaded-checkpoint inference remains unverified. **Jev** is an optional hosted alternative, blocked unless `QST_ALLOW_HOSTED_AI=1` and explicitly selected. Neither is required for the free core. See [setup and primary sources](docs/FREE_MODE.md).
 
 ## Default risk policy
 
@@ -203,8 +209,11 @@ Set secrets in your process environment; never commit them or enter them in the 
 
 | Variable | Purpose |
 |---|---|
-| `TYPESAFE_API_KEY` | Hosted Jev; opt in per run with `--jev` or the checkbox |
-| `JUPITER_API_KEY` | Indicative DEX quote check and supervised swap adapter |
+| `QST_ALLOW_HOSTED_AI` | Leave unset/0 for the default no-hosted-model policy |
+| `TYPESAFE_API_KEY` | Hosted Jev; also requires the above switch and per-run `--jev` |
+| `QST_LAYA_MODEL_DIR` | Optional complete local Laya checkpoint directory |
+| `QST_WALLET_FILE` | Path to an external owner-only Ubuntu keyfile; never the key itself |
+| `JUPITER_API_KEY` | Supervised swap adapter only; unnecessary for default paper mode |
 | `SOLANA_RPC_URL` | Optional HTTPS mainnet RPC |
 | `QST_MAINNET` | Explicit CLI-only switch; leave unset for research |
 
@@ -220,7 +229,8 @@ Run `python -m quantum_solana_trader --help` or append `--help` to a subcommand.
 |---|---|
 | `serve --port 8765` | Local dashboard |
 | `demo` | Offline synthetic replay |
-| `download --days 30 --interval 1m` | Historical data; 5m, 15m and 1h also supported |
+| `download --days 30` | Request keyless one-minute DEX history; provider availability applies |
+| `scan-dex --usdc 10` | Read-only pool comparison and conservative round-trip quotes |
 | `import-csv file.csv --source csv:my-data` | Normalized CSV with provenance |
 | `train --session name` | Replay/learn; optional `--source` and `--interval` |
 | `evaluate --session fresh-name` | Three-fold evaluation |
@@ -234,9 +244,9 @@ Run `python -m quantum_solana_trader --help` or append `--help` to a subcommand.
 
 ## Verification and honest results
 
-**28 regression tests** passed after the rename on Windows/Python 3.14.7 (31.139 seconds). Both the new CLI and legacy launch alias were checked. Run the suite after installation; dedicated Ubuntu hardware validation remains outstanding. Tests cover causal predictions, accounting, restart equivalence, failed commits, readiness, malformed providers, uncertainty reconciliation and HTTP boundaries.
+**37 regression tests** passed on Windows/Python 3.14.7. Run the suite after installation; dedicated Ubuntu hardware validation remains outstanding. Tests include causal predictions, accounting, restart equivalence, failed commits, DEX provenance/pagination, malformed quotes, hosted-AI blocking, local-review validation, uncertainty reconciliation and HTTP boundaries. Live keyless smoke checks retrieved 1,440 DEX candles and compared three venues. A replay made no trades and underperformed the trivial prediction baseline; this validates plumbing, not profitability.
 
-The [full-week report](docs/full-week-evaluation.json) used **10,080 real minute candles**, three expanding training folds and 1,507 test bars per fold:
+The earlier **Binance research** [full-week report](docs/full-week-evaluation.json) used **10,080 real minute candles**, three expanding training folds and 1,507 test bars per fold. It is not DEX execution evidence:
 
 | Test fold | Paper PnL | Closed trades | Brier skill vs no opportunity |
 |---|---:|---:|---:|
@@ -258,7 +268,7 @@ Outstanding work: authenticated integrations, complete devnet transaction valida
 | No trades | Inspect warmup, model/expert agreement, costs and risk reasons; HOLD is valid |
 | Accuracy looks exceptional | Compare Brier skill, baseline accuracy and actual trades |
 | Halted session cannot resume | Review the latched incident; preserve its history |
-| Jev disabled | Set its key in the server environment and restart |
+| Jev disabled | Expected in free mode; paid opt-in additionally requires `QST_ALLOW_HOSTED_AI=1` |
 | Unknown swap outcome | Reconcile; never blindly resend or delete intents |
 
 More details: [runbook](docs/RUNBOOK.md) · [audit](docs/AUDIT.md) · [research](docs/RESEARCH.md) · [specification](SPEC.md).

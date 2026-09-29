@@ -282,6 +282,7 @@ def readiness(state):
     days = max(0., (state['last_ts'] - state['observed_since']) / 86400) if state['observed_since'] else 0
     checks = [
         ('real live paper observations', state['mode'] == 'paper' and state['observation_count'] >= 10000),
+        ('DEX market provenance', state['source'].startswith('dex:geckoterminal:')),
         ('at least 30 elapsed observation days', days >= 30),
         ('at least 100 closed paper trades', state['closed'] >= 100),
         ('positive net paper PnL', stats['pnl'] > 0),

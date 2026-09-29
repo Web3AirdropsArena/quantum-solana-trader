@@ -185,6 +185,8 @@ def token_screen(mint):
 
 
 def jev_review(state):
+    if os.getenv('QST_ALLOW_HOSTED_AI') != '1':
+        raise ProviderError('Hosted AI disabled by zero-paid-service policy')
     key = os.getenv('TYPESAFE_API_KEY')
     if not key:
         raise ProviderError('TYPESAFE_API_KEY is required when Jev is enabled')

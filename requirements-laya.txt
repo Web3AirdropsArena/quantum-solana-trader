@@ -1,0 +1,3 @@
+# Optional local inference only; checkpoints downloaded separately by the operator.
+# Install a CPU-only PyTorch build first; core paper mode needs none of this.
+laya==0.3.21

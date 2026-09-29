@@ -228,9 +228,20 @@ function render() {
     .forEach((button) => (button.disabled = snapshot.worker_running));
   $("stop-worker").disabled = !snapshot.worker_running;
   $("use-jev").disabled = !snapshot.providers.jev;
+  $("use-laya").disabled = !snapshot.providers.laya;
   $("use-jev").title = snapshot.providers.jev
     ? "Hosted Jev reviewer enabled per run"
-    : "Set TYPESAFE_API_KEY on the server to enable";
+    : "Paid hosted AI is disabled by default; a key alone does not enable calls";
+  $("cost-policy").textContent = snapshot.providers.hosted_ai_allowed
+    ? "Hosted AI explicitly allowed; Jev is still optional per run. Provider charges may apply."
+    : "ZERO PAID AI: local learning + keyless public DEX data. Jev calls are blocked. Network and future trading fees still apply.";
+  const scan = snapshot.dex_scan?.data;
+  $("dex-scan").innerHTML = scan
+    ? `<div><strong>${scan.allow ? "Research checks passed" : "Entries blocked"}</strong><p>${escape(scan.reasons.join(" · ") || "No monitored anomaly detected; not a safety guarantee.")}</p><p>Raw spread: ${pct(scan.raw_spread)} · Checked ${date(scan.checked_at)} UTC</p>${scan.pools.map((p) => `<p>${escape(p.dex)}: ${usd(p.price)} · liquidity ${usd(p.liquidity_usd)}</p>`).join("")}<p>${escape(scan.warning)}</p></div>`
+    : "No DEX scan yet. Start a scan or live DEX paper session.";
+  $("mainnet-review").textContent = snapshot.readiness?.eligible_for_review
+    ? "Research gates passed: operator review requested. Mainnet is still OFF. Complete independent validation, then explicitly authorize in the local CLI; never paste a private key here."
+    : "Mainnet stays OFF until research gates and operator review pass. This browser never accepts wallet secrets.";
   const hasEvaluation = snapshot.evaluations?.some(
     (e) => e.source === s?.source,
   );
@@ -552,9 +563,13 @@ document.querySelectorAll("[data-run]").forEach((button) =>
         source: $("dataset").value,
         days: 7,
         jev: $("use-jev").checked,
+        laya: $("use-laya").checked,
         session: $("paper-session").value,
         checkpoint:
-          snapshot?.state?.mode === "replay" ? snapshot.session : undefined,
+          snapshot?.state?.mode === "replay" &&
+          snapshot?.state?.source?.startsWith("dex:")
+            ? snapshot.session
+            : undefined,
       });
       selected = "";
       toast("Worker started. Progress and events update automatically.");

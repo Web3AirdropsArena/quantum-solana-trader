@@ -174,6 +174,8 @@ class EngineTests(unittest.TestCase):
         state = self.engine().state
         state.update(mode='paper', observation_count=10000, observed_since=1000000,
                      last_ts=1000060, closed=100, equity=11000, gross_profit=200, gross_loss=100)
+        from quantum_solana_trader.dex import source_name
+        state['source'] = source_name()
         state['model'].update(n=1000, correct=990, brier=20.)
         state['model']['bins'][0] = [1000, 20., 10]
         result = readiness(state)
@@ -243,7 +245,7 @@ class ProviderTests(unittest.TestCase):
 
     def test_jev_fail_closed_on_malformed_probabilities(self):
         response = {'model': 'jev-1.13.0', 'answers': {'entry_risk': {'type': 'choice', 'choice': 'allow', 'confidence': .95, 'probabilities': {'allow': .9, 'block': .05, 'review': .05}}}}
-        with patch.dict(os.environ, {'TYPESAFE_API_KEY': 'test'}), patch('quantum_solana_trader.providers.request_json', return_value=response):
+        with patch.dict(os.environ, {'TYPESAFE_API_KEY': 'test', 'QST_ALLOW_HOSTED_AI': '1'}), patch('quantum_solana_trader.providers.request_json', return_value=response):
             self.assertTrue(jev_review({})['allow'])
             response['answers']['entry_risk']['probabilities']['block'] = .9
             with self.assertRaises(ProviderError):

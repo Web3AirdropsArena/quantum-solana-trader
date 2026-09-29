@@ -99,7 +99,7 @@ def make_server(store, port=8765):
                     raise ValueError('Expected JSON object')
                 if self.path == '/api/run':
                     operation = data.get('operation')
-                    if operation not in ('demo', 'download', 'train', 'evaluate', 'paper'):
+                    if operation not in ('demo', 'download', 'train', 'evaluate', 'paper', 'scan'):
                         raise ValueError('Unknown operation')
                     runtime.launch(operation, data)
                 elif self.path == '/api/control':

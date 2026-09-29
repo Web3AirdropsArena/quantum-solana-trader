@@ -313,6 +313,7 @@ main {
   color: var(--red);
 }
 .notice {
+  overflow-wrap: anywhere;
   border: 1px solid var(--border);
   background: #161c19;
   padding: 11px 14px;

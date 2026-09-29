@@ -226,12 +226,14 @@
               <button class="button primary" data-run="demo">
                 Run synthetic demo ↗</button
               ><button class="button secondary" data-run="download">
-                Download 7 days</button
+                Download DEX history</button
               ><label class="sr-only" for="dataset">Dataset</label
               ><select id="dataset">
                 <option>No datasets</option></select
               ><button class="button secondary" data-run="train">
                 Train dataset</button
+              ><label class="check"
+                ><input type="checkbox" id="use-laya" />Local Laya review</label
               ><label class="check"
                 ><input type="checkbox" id="use-jev" />Use Jev risk
                 review</label
@@ -239,7 +241,7 @@
                 >Paper session name</label
               ><input
                 id="paper-session"
-                value="live-paper"
+                value="live-dex-paper"
                 maxlength="64"
                 pattern="[A-Za-z0-9_-]+"
                 aria-label="Paper session name"
@@ -252,6 +254,26 @@
             </div>
           </article>
           <div id="stages" class="stage-grid"></div>
+          <article class="panel evaluation-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>DEX research &amp; entry firewall</h2>
+                <p class="muted">
+                  Keyless public data. Indicative spreads are not executable
+                  arbitrage.
+                </p>
+              </div>
+              <button class="button secondary" data-run="scan">
+                Scan DEX venues
+              </button>
+            </div>
+            <div id="dex-scan" class="position-body empty">
+              No DEX scan yet.
+            </div>
+            <p id="cost-policy" class="panel-note">
+              Local models have no inference bill.
+            </p>
+          </article>
           <article class="panel evaluation-panel">
             <div class="panel-heading">
               <div>
@@ -288,6 +310,9 @@
                 <span class="badge">LOCKED</span>
               </div>
               <div id="gates" class="gates"></div>
+              <p id="mainnet-review" class="panel-note">
+                Mainnet stays off. This browser never accepts wallet secrets.
+              </p>
             </article>
           </div>
           <article class="panel">

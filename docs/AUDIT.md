@@ -76,3 +76,15 @@ One profitable trade is insufficient evidence. Two folds did not trade, and one 
 - Numerical online learning and trade lessons persist. This is not local Jev training, a foundation-model reasoning engine, autonomous source-code repair or quantum computation.
 
 Before any mainnet use: collect much longer independent market evidence, validate the specific Jupiter route and RPC behavior, independently review signing/account-delta controls, and resolve devnet transaction tests. Do not infer readiness from a passing unit-test suite.
+
+## Free local / DEX follow-up
+
+37 regression tests passed on Windows/Python 3.14.7 (30.450 seconds in the final run). New boundaries cover DEX mint metadata, completed timestamps, pagination, spoofed token symbols, pool age/liquidity, quote tampering, friction checks, hosted-AI blocking despite a configured key, local Laya response validation, external wallet paths and exact paper restart state. JavaScript syntax validation passed.
+
+Live keyless checks retrieved 1,440 one-minute Orca SOL/USDC candles and compared three DEX venues. At the observed snapshot the raw gap was about 0.114%, while the conservative Raydium round-trip loss was about 1.011% on 10 USDC; these are transient indicative observations, not arbitrage evidence. The DEX replay made no trades and had negative prediction skill. Three chronological evaluation folds also made no trades; the two folds with positive baseline loss had Brier skill of about -12.60% and -10.27%. The first fold's always-no-opportunity baseline had zero error. No profitable edge was established. The report is in `docs/dex-smoke-evaluation.json` with source and dataset hash; its original generic CEX limitation text is superseded by this DEX provenance note.
+
+Defaults now use DEX observations. CEX history remains available only as explicit legacy research and cannot satisfy the DEX readiness gate. Paid hosted AI requires an additional explicit environment switch. The optional local Laya adapter cannot override failed checks, loads only local assets in offline mode, and fails closed; actual checkpoint loading, runtime memory use and trading benefit remain unverified. Laya fine-tuning is not implemented. Windows mainnet key loading is rejected; the Ubuntu loader requires an external regular, owner-only keyfile. No secrets were loaded and no transactions were signed for these checks.
+
+DEX price/liquidity checks are heuristics over cached public data. They do not prove pool safety, quote freshness, MEV protection or atomic arbitrage feasibility. The new provider path does not change the remaining real-funds, independent strategy-validation and Ubuntu-validation limitations above.
+
+Browser verification exercised the DEX scan and a named live paper session. Two completed DEX bars were persisted with HOLD decisions. A missing acceptable two-way quote blocked entries as intended. The worker was then stopped with its state retained; hosted reviewers remained disabled.

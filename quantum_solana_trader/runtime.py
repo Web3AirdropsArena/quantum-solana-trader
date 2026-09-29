@@ -8,7 +8,9 @@ import time
 
 from .engine import Engine, Policy, metrics, readiness
 from .model import features
-from .providers import INTERVALS, ProviderError, binance_candles, download, jev_review, jupiter_order, SOL, USDC
+from .providers import INTERVALS, ProviderError, binance_candles, download, jev_review, token_screen, SOL, USDC
+from .dex import DEFAULT_POOL, dex_candles, download_dex, scan_dexes, source_name
+from .local_review import LocalReviewer
 from .research import replay, synthetic, walk_forward
 
 _cpu_previous = None
@@ -55,11 +57,11 @@ class Runtime:
                 if not 1 <= days <= 365:
                     raise ValueError('Choose 1–365 days')
                 end = int(time.time()) // 60 * 60
-                source, count = download(self.store, end - days * 86400, end,
+                source, count = download_dex(self.store, end - days * 86400, end,
                     progress=lambda p, n: self.update('download', p, f'{n:,} new historical candles'), stop=self.stop_event)
                 self.store.log('system', 'download', {'source': source, 'candles': count})
             elif operation == 'train':
-                source = options.get('source', 'binance:SOLUSDC:1m')
+                source = options.get('source', source_name())
                 if source not in [d['source'] for d in self.store.datasets()]:
                     raise ValueError('Select an imported dataset')
                 self.session = identifier
@@ -68,8 +70,12 @@ class Runtime:
                     progress=lambda p, eta: self.update('training', p, 'Chronological online learning', eta), stop=self.stop_event)
             elif operation == 'paper':
                 self._paper(options)
+            elif operation == 'scan':
+                result = scan_dexes()
+                self.store.log('system', 'dex_scan', result)
+                self.update('complete', 1, 'DEX research scan saved; price gaps are not executable arbitrage.')
             elif operation == 'evaluate':
-                source = options.get('source', 'binance:SOLUSDC:1m')
+                source = options.get('source', source_name())
                 if source not in [d['source'] for d in self.store.datasets()]:
                     raise ValueError('Select an imported dataset')
                 interval = INTERVALS.get(source.rsplit(':', 1)[-1], 60)
@@ -87,24 +93,32 @@ class Runtime:
 
     def _paper(self, options):
         with self.lock:
-            self.session = options.get('session') or 'live-paper'
+            self.session = options.get('session') or 'live-dex-paper'
             if not isinstance(self.session, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', self.session):
                 raise ValueError('Paper session must be 1–64 letters, numbers, underscores or hyphens')
-            self.engine = Engine(self.store, self.session, 'paper', source='binance:SOLUSDC:1m')
+            pool = options.get('pool', DEFAULT_POOL)
+            feed = options.get('feed', 'dex')
+            if feed not in ('dex', 'binance'):
+                raise ValueError('Unknown market feed')
+            source = source_name(pool) if feed == 'dex' else 'binance:SOLUSDC:1m'
+            if options.get('jev') and os.getenv('QST_ALLOW_HOSTED_AI') != '1':
+                raise ValueError('Hosted AI disabled by zero-paid-service policy')
+            self.engine = Engine(self.store, self.session, 'paper', source=source)
             checkpoint = options.get('checkpoint')
             if checkpoint and self.engine.state['bars'] == 0:
                 trained = self.store.load(checkpoint)
-                if not trained or trained['source'] != 'binance:SOLUSDC:1m' or trained['mode'] != 'replay':
-                    raise ValueError('Warm start requires a real SOLUSDC 1m replay checkpoint')
+                if not trained or trained['source'] != source or trained['mode'] != 'replay':
+                    raise ValueError('Warm start requires a replay checkpoint from this exact market/pool source')
                 import copy
                 self.engine.state['model'] = copy.deepcopy(trained['model'])
                 self.engine.state['model'].update(correct=0, brier=0., bins=[[0, 0., 0] for _ in range(10)])
                 self.engine.state['metric_origin_n'] = trained['model']['n']
                 self.store.save(self.session, self.engine.state)
-        errors = 0
+        errors, mint_review, screened_at = 0, None, 0
+        local_reviewer = LocalReviewer() if options.get('laya') else None
         while not self.stop_event.is_set():
             try:
-                candles = binance_candles(limit=2)
+                candles = dex_candles(pool, limit=3) if feed == 'dex' else binance_candles(limit=2)
                 if not candles or time.time() - candles[-1]['ts'] > 90:
                     raise ProviderError('Market data stale; waiting without opening new exposure')
                 candle = candles[-1]
@@ -112,29 +126,47 @@ class Runtime:
                     self.stop_event.wait(5)
                     continue
                 review = None
+                if feed == 'dex':
+                    prior = self.store.events(self.session, 'dex_scan', 1)
+                    notional = min(10000., max(1., self.engine.state['equity'] * self.engine.policy.allocation))
+                    review = scan_dexes(notional, prior[0]['data'] if prior else None, candle['close'])
+                    if time.time() - screened_at > 600:
+                        try:
+                            screens = [token_screen(SOL), token_screen(USDC)]
+                            mint_review = all(s['allow'] for s in screens)
+                            self.store.log(self.session, 'mint_screen', {'allow': mint_review, 'checks': screens})
+                        except (ProviderError, ValueError, KeyError, TypeError):
+                            mint_review = False
+                        screened_at = time.time()
+                    if not mint_review:
+                        review['allow'] = False
+                        review['reasons'].append('canonical mint verification unavailable or failed')
+                    self.store.log(self.session, 'dex_scan', review)
                 if options.get('jev'):
                     try:
-                        review = jev_review({'features': features(self.engine.state['history'] + [candle]),
+                        hosted = jev_review({'features': features(self.engine.state['history'] + [candle]),
                             'risk': {'drawdown': self.engine.state['drawdown'], 'policy': self.engine.state['policy']},
-                            'screen': {'universe': 'SOL/USDC only; quote observation, no signer'}})
+                            'screen': review})
+                        self.store.log(self.session, 'jev_review', hosted)
+                        if not hosted['allow']:
+                            review = {'allow': False, 'reason': 'Jev review blocked entry'}
                     except (ProviderError, ValueError, KeyError, TypeError):
                         review = {'allow': False, 'reason': 'Jev unavailable or invalid'}
-                # Optional on-chain indicative quote observation. Its failure blocks entries.
-                if os.getenv('JUPITER_API_KEY'):
+                if local_reviewer:
                     try:
-                        quote = jupiter_order(USDC, SOL, 10_000_000)
-                        dex_price = 10 / (int(quote['outAmount']) / 1e9)
-                        deviation = abs(dex_price / candle['close'] - 1)
-                        self.store.log(self.session, 'quote', {'price': dex_price, 'cex_deviation': deviation, 'router': quote.get('router')})
-                        if deviation > .02:
-                            review = {'allow': False, 'reason': 'CEX/DEX quote divergence exceeds 2%'}
-                    except (ProviderError, ValueError, KeyError):
-                        review = {'allow': False, 'reason': 'Jupiter quote unavailable'}
+                        local = local_reviewer.review({'features': features(self.engine.state['history'] + [candle]),
+                            'risk': {'drawdown': self.engine.state['drawdown'], 'policy': self.engine.state['policy']},
+                            'screen': review or {}})
+                        self.store.log(self.session, 'laya_review', local)
+                        if not local['allow']:
+                            review = {'allow': False, 'reason': 'Local Laya blocked or deferred entry'}
+                    except ProviderError:
+                        review = {'allow': False, 'reason': 'Local Laya unavailable or invalid'}
                 with self.lock:
-                    self.store.ingest('binance:SOLUSDC:1m', [candle])
+                    self.store.ingest(source, [candle])
                     self.engine.step(candle, observed=True, risk_review=review)
                 errors = 0
-                self.update('paper', None, 'Observing completed SOL/USDC candles; paper fills only. ETA is open-ended.')
+                self.update('paper', None, f'Observing {feed} SOL/USDC candles; paper fills only. ETA is open-ended.')
             except (ProviderError, ValueError, KeyError, TypeError) as error:
                 errors += 1
                 with self.lock:
@@ -161,9 +193,12 @@ class Runtime:
                     'active_session': self.session, 'active_engine': self.engine is not None,
                     'state': state, 'metrics': metrics(state) if state else None, 'evaluations': self.store.evaluations(),
                     'readiness': readiness(state) if state else None, 'job': self.job,
+                    'dex_scan': (self.store.events(chosen, 'dex_scan', 1) or self.store.events('system', 'dex_scan', 1) or [None])[0],
                     'worker_running': bool(self.thread and self.thread.is_alive()),
                     'telemetry': telemetry(self.started, self.store.path),
-                    'providers': {'jupiter': bool(os.getenv('JUPITER_API_KEY')), 'jev': bool(os.getenv('TYPESAFE_API_KEY'))},
+                    'providers': {'jupiter': bool(os.getenv('JUPITER_API_KEY')), 'jev': bool(os.getenv('TYPESAFE_API_KEY')) and os.getenv('QST_ALLOW_HOSTED_AI') == '1',
+                                  'hosted_ai_allowed': os.getenv('QST_ALLOW_HOSTED_AI') == '1',
+                                  'laya': bool(os.getenv('QST_LAYA_MODEL_DIR'))},
                     'mainnet': 'Locked • CLI-only supervised execution'}
 
 
